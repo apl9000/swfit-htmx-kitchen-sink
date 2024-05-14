@@ -4,7 +4,6 @@ import Vapor
 struct TodoController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
         let todos = routes.grouped("todos")
-
         todos.get(use: { try await self.index(req: $0) })
         todos.post(use: { try await self.create(req: $0) })
         todos.group(":todoID") { todo in
@@ -12,12 +11,13 @@ struct TodoController: RouteCollection {
         }
     }
         
-    func index(req: Request) async throws -> [TodoDTO] {
-        try await Todo.query(on: req.db).all().map { $0.toDTO() }
+    func index(req: Request) async throws -> View {
+        let count = try await Todo.query(on: req.db).all().map { $0.toDTO() }.count
+        return try await req.view.render("todo", ["count": count])
     }
 
     func create(req: Request) async throws -> TodoDTO {
-        let todo = try req.content.decode(TodoDTO.self).toModel()
+        let todo: Todo = try req.content.decode(TodoDTO.self).toModel()
 
         try await todo.save(on: req.db)
         return todo.toDTO()
